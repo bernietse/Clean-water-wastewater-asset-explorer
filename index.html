@@ -13,6 +13,10 @@
     --cw-dim:#2E5560;
     --ww:#C2793E;
     --ww-dim:#5A4530;
+    --isa:#8C86D6;
+    --isa-dim:#463F6E;
+    --isb:#D6B33F;
+    --isb-dim:#6E5C2A;
     --text:#EAF1F5;
     --muted:#7E93A8;
     --good:#6FCF97;
@@ -55,6 +59,31 @@
     margin-top:14px;
     flex-wrap:wrap;
   }
+  .pagenav{
+    display:flex;
+    gap:8px;
+    margin-top:18px;
+  }
+  .pagenav button{
+    font-family:var(--mono);
+    font-size:11.5px;
+    letter-spacing:.03em;
+    background:var(--panel);
+    border:1px solid var(--line);
+    color:var(--muted);
+    padding:8px 14px;
+    border-radius:7px;
+    cursor:pointer;
+    transition:border-color .15s,color .15s;
+  }
+  .pagenav button:hover{color:var(--text);}
+  .pagenav button.active{
+    color:var(--text);
+    border-color:var(--cw);
+    background:var(--panel-alt);
+  }
+  .page{display:none;}
+  .page.active{display:block;}
   .legend span{
     font-family:var(--mono);
     font-size:11px;
@@ -106,6 +135,8 @@
   }
   .clean .pipe::before{background:linear-gradient(180deg,var(--cw),var(--cw-dim));}
   .waste .pipe::before{background:linear-gradient(180deg,var(--ww),var(--ww-dim));}
+  .isoa .pipe::before{background:linear-gradient(180deg,var(--isa),var(--isa-dim));}
+  .isob .pipe::before{background:linear-gradient(180deg,var(--isb),var(--isb-dim));}
   .stage{
     position:relative;
     margin-bottom:10px;
@@ -122,6 +153,8 @@
   }
   .clean .stage::before{background:var(--cw);}
   .waste .stage::before{background:var(--ww);}
+  .isoa .stage::before{background:var(--isa);}
+  .isob .stage::before{background:var(--isb);}
   .stage-btn{
     width:100%;
     text-align:left;
@@ -140,6 +173,8 @@
   }
   .stage-btn:hover{border-color:var(--cw);}
   .waste .stage-btn:hover{border-color:var(--ww);}
+  .isoa .stage-btn:hover{border-color:var(--isa);}
+  .isob .stage-btn:hover{border-color:var(--isb);}
   .stage-btn .lbl{display:flex;flex-direction:column;gap:2px;}
   .stage-btn .code{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.04em;}
   .stage-btn .name{font-size:13.5px;font-weight:500;}
@@ -173,9 +208,13 @@
   .asset-chip:hover{color:var(--text);background:rgba(255,255,255,0.03);}
   .clean .asset-chip:hover{border-color:var(--cw);}
   .waste .asset-chip:hover{border-color:var(--ww);}
+  .isoa .asset-chip:hover{border-color:var(--isa);}
+  .isob .asset-chip:hover{border-color:var(--isb);}
   .asset-chip.active{color:var(--text);background:rgba(255,255,255,0.05);}
   .clean .asset-chip.active{border-color:var(--cw);}
   .waste .asset-chip.active{border-color:var(--ww);}
+  .isoa .asset-chip.active{border-color:var(--isa);}
+  .isob .asset-chip.active{border-color:var(--isb);}
   .asset-chip .achip-code{font-family:var(--mono);font-size:10px;color:var(--muted);flex-shrink:0;}
 
   #overlay{
@@ -243,6 +282,8 @@
     padding:12px 14px;
   }
   .waste-active #drawer .am-box{border-left-color:var(--ww);}
+  .isoa-active #drawer .am-box{border-left-color:var(--isa);}
+  .isob-active #drawer .am-box{border-left-color:var(--isb);}
 
   @media (max-width:820px){
     .layout{grid-template-columns:1fr;}
@@ -253,16 +294,29 @@
 <body>
 
 <header>
-  <div class="eyebrow">Asset Management Reference</div>
-  <h1>Clean water &amp; wastewater asset explorer</h1>
-  <p>Click a stage to open it up, then click an asset to see what it does, its key components, common failure modes, and what an asset management specialist watches for.</p>
-  <div class="legend">
+  <div class="eyebrow">Wessex Water &middot; Asset Management Reference</div>
+  <h1 id="page-title">Clean water &amp; wastewater asset explorer</h1>
+  <p id="page-desc">Click a stage to open it up, then click an asset to see what it does, its key components, common failure modes, and what an asset management specialist watches for.</p>
+  <div class="legend" id="legend-assets">
     <span><span class="dot" style="background:var(--cw)"></span>Clean water (source to tap)</span>
     <span><span class="dot" style="background:var(--ww)"></span>Wastewater (drain to discharge)</span>
   </div>
+  <div class="legend" id="legend-iso" style="display:none">
+    <span><span class="dot" style="background:var(--isa)"></span>The standards (55000 / 55001 / 55002)</span>
+    <span><span class="dot" style="background:var(--isb)"></span>Applying it at a water utility</span>
+  </div>
+  <div class="pagenav">
+    <button id="nav-assets" class="active" onclick="showPage('assets')">Asset explorer</button>
+    <button id="nav-iso" onclick="showPage('iso')">ISO 55000 explorer</button>
+  </div>
 </header>
 
-<div class="layout" id="layout"></div>
+<div class="page active" id="page-assets-wrap">
+  <div class="layout" id="layout"></div>
+</div>
+<div class="page" id="page-iso-wrap">
+  <div class="layout" id="layout-iso"></div>
+</div>
 
 <div id="overlay" onclick="closeDrawer()"></div>
 <div id="drawer">
@@ -581,12 +635,232 @@ const DATA = {
   }
 };
 
+const DATA_ISO = {
+  isoa: {
+    label: "The ISO 55000 family",
+    tag: "the standards",
+    stages: [
+      {
+        code: "IS-1", name: "ISO 55000 — overview, principles & terminology",
+        assets: [
+          { code:"A1", name:"Asset management (the definition)",
+            what:"ISO 55000 defines asset management as the coordinated activity of an organisation to realise value from its assets — deliberately broader than 'maintenance'. It's about balancing cost, risk and performance to meet organisational objectives, not just keeping things running.",
+            components:["Realises value from assets, not just maintains them","Balances cost, risk and performance","Aligned to organisational objectives, not asset-by-asset decisions","Applies across the whole asset life cycle"],
+            failures:["Treating it as a rebrand of the existing maintenance team","Building an asset register without linking it to organisational objectives","Assuming 'asset management' only means physical assets, not the management system around them"],
+            am:"When you introduce yourself as an 'asset management specialist', this is the definition colleagues from a traditional engineering background may not share — worth being explicit that the role is about value and risk trade-offs across the whole business, not just keeping pipes in the ground.",
+            condition:["Definition","Value","Scope"]
+          },
+          { code:"A2", name:"Asset management system",
+            what:"The set of interrelated elements (policy, objectives, processes, roles, data) an organisation uses to establish its asset management policy and objectives, and the processes to achieve them. It's the management system that directs and controls asset management activity — distinct from the assets themselves.",
+            components:["Asset management policy","Strategic asset management plan (SAMP)","Asset management objectives","Supporting processes, roles and information systems"],
+            failures:["Confusing the asset management system with the asset register or GIS","Having good documents that don't actually drive real decisions","No clear ownership of the system itself"],
+            am:"This is the part that gets audited for ISO 55001 certification — not whether your pipes are in good condition, but whether you have a functioning, evidenced system for deciding what to do about them.",
+            condition:["Governance","Documentation","Process"]
+          },
+          { code:"A3", name:"The four fundamentals",
+            what:"ISO 55000 sets out four fundamentals that should be evident in any effective asset management system: Value (assets exist to provide value to the organisation and stakeholders), Alignment (asset management decisions align to organisational objectives), Leadership (culture and commitment from leadership), and Assurance (confidence that assets will do what's required, and evidence to prove it).",
+            components:["Value — assets deliver value to the organisation and its stakeholders","Alignment — AM decisions align with organisational objectives","Leadership — culture and commitment, not just a policy document","Assurance — confidence and evidence that assets will perform as required"],
+            failures:["Strong technical asset management with no link back to corporate strategy (fails alignment)","Good plans with no visible leadership commitment or resourcing","Assurance treated as a paperwork exercise rather than genuine confidence-building"],
+            am:"Useful as a quick self-check on any proposal you write: does it show value, alignment, leadership backing, and assurance? Regulators and auditors are often explicitly listening for these four themes.",
+            condition:["Value","Alignment","Leadership","Assurance"]
+          },
+          { code:"A4", name:"Line of sight",
+            what:"The traceable connection between an organisation's high-level objectives and the day-to-day decisions made about individual assets — so a decision to renew a specific pipe can be traced back, in principle, to a corporate objective (e.g. reducing supply interruptions) rather than existing in isolation.",
+            components:["Organisational objectives at the top","Strategic asset management plan (SAMP) translating those into asset terms","Asset management objectives and plans","Individual work orders and interventions at the bottom"],
+            failures:["A SAMP that exists as a document but isn't referenced in day-to-day prioritisation","Engineers making sound technical decisions that don't map to any stated objective","Objectives cascaded down without any feedback loop back up"],
+            am:"When you're asked to justify an investment case, 'line of sight' is often exactly what a business case reviewer or Ofwat scrutiny process is testing for — can you show the thread from this specific spend back to a stated company objective?",
+            condition:["Traceability","Objectives cascade"]
+          }
+        ]
+      },
+      {
+        code: "IS-2", name: "ISO 55001 — requirements (the certifiable standard)",
+        assets: [
+          { code:"A1", name:"Context of the organisation (clause 4)",
+            what:"Requires the organisation to determine internal and external issues relevant to its purpose, identify stakeholders and their requirements, and define the scope of the asset management system — essentially, understanding the environment the asset management system has to operate in before designing it.",
+            components:["Internal/external issue identification","Stakeholder needs and expectations","Scope of the asset management system","Interaction with the wider management system"],
+            failures:["Scope defined too narrowly (e.g. only covers one asset class)","Stakeholder requirements identified once and never revisited","No link between this clause and the SAMP that follows"],
+            am:"For a regulated water utility, this clause is where Ofwat, the Environment Agency, the DWI, customers and shareholders all get formally identified as stakeholders with distinct, sometimes competing, requirements — a genuinely useful exercise, not just box-ticking.",
+            condition:["Scope","Stakeholders"]
+          },
+          { code:"A2", name:"Leadership (clause 5)",
+            what:"Requires top management to demonstrate leadership and commitment to the asset management system, establish an asset management policy, and ensure responsibilities and authorities are assigned and communicated.",
+            components:["Asset management policy, endorsed by top management","Assigned roles, responsibilities and authorities","Visible leadership commitment, not just sign-off"],
+            failures:["A policy that's signed but never referenced again","Responsibilities assigned on paper with no real authority or resource behind them"],
+            am:"In practice this is tested by whether investment decisions genuinely follow the stated policy when trade-offs get hard — e.g. does leadership actually prioritise the stated risk appetite when budgets are tight, or quietly override it.",
+            condition:["Policy","Accountability"]
+          },
+          { code:"A3", name:"Planning — SAMP & objectives (clause 6)",
+            what:"Requires the organisation to address risks and opportunities to the asset management system, set asset management objectives consistent with the SAMP, and plan how to achieve them — the core planning engine of the whole standard.",
+            components:["Strategic asset management plan (SAMP)","Asset management objectives","Risk-based planning approach","Plans to achieve the objectives, with resourcing"],
+            failures:["A SAMP written once at certification and never updated","Objectives that aren't measurable, so progress can't be evidenced","Risk assessment done for compliance rather than to actually inform planning"],
+            am:"This clause maps almost directly onto the AMP investment planning cycle — your SAMP-equivalent thinking (long-term asset strategy) has to sit above and inform each 5-year AMP submission, not be reinvented from scratch each time.",
+            condition:["SAMP","Objectives","Risk planning"]
+          },
+          { code:"A4", name:"Support (clause 7)",
+            what:"Covers the resources, competence, awareness, communication and information (including documented information) needed to support the asset management system — the enabling infrastructure behind the plans.",
+            components:["Resourcing (people, budget, tools)","Competence and training","Internal and external communication","Asset information / data management requirements"],
+            failures:["Good plans that fail because competence or resourcing was never actually assessed","Asset data quality issues undermining every decision built on top of it","Information requirements defined without considering how data is actually captured in the field"],
+            am:"Asset data quality specifically sits here — a huge amount of real-world asset management specialist time goes into this clause, since PoF/CoF models, criticality scoring and investment cases are only as good as the underlying data.",
+            condition:["Competence","Data quality","Resourcing"]
+          },
+          { code:"A5", name:"Operation (clause 8)",
+            what:"Requires the organisation to plan, implement and control the processes needed to meet asset management requirements, including managing change and managing outsourced activities (e.g. contractors, delivery partners).",
+            components:["Operational planning and control","Management of change","Control of outsourced processes (contractors, framework partners)"],
+            failures:["Change introduced (new asset types, new delivery model) without reassessing risk","Outsourced/contracted work not held to the same asset management standard as in-house work"],
+            am:"Highly relevant if Wessex Water delivers capital works through delivery partners or alliances — clause 8 is explicit that outsourcing doesn't outsource accountability for the asset management system.",
+            condition:["Change control","Contractor oversight"]
+          },
+          { code:"A6", name:"Performance evaluation (clause 9)",
+            what:"Requires monitoring, measurement, analysis and evaluation of the asset management system's performance, plus internal audit and management review — the 'Check' in a Plan-Do-Check-Act cycle.",
+            components:["Performance indicators for assets and the AM system itself","Internal audit programme","Management review at planned intervals"],
+            failures:["Measuring asset condition but never evaluating whether the AM system itself is working","Audits that check documentation exists rather than whether it's followed","Management review as a formality with no real decisions coming out of it"],
+            am:"Distinct from asset performance reporting (which you'll do a lot of) — this clause is about evaluating whether the whole planning-and-decision-making system is actually effective, a level up from any individual asset's condition data.",
+            condition:["KPIs","Audit","Management review"]
+          },
+          { code:"A7", name:"Improvement (clause 10)",
+            what:"Requires the organisation to determine and act on opportunities for improvement, and to manage nonconformity and take corrective action — the 'Act' in the cycle, closing the loop back into planning.",
+            components:["Nonconformity and corrective action process","Continual improvement of the asset management system"],
+            failures:["Corrective actions logged but never closed out","Improvement treated as a one-off project rather than continuous"],
+            am:"This is where lessons from asset failures should formally feed back into criticality models, inspection regimes and investment planning — a good specialist treats every significant failure as an input here, not just an isolated incident.",
+            condition:["Corrective action","Continual improvement"]
+          }
+        ]
+      },
+      {
+        code: "IS-3", name: "ISO 55002 — guidance on application",
+        assets: [
+          { code:"A1", name:"Interpreting the requirements",
+            what:"ISO 55002 isn't certifiable itself — it's a companion guidance document giving worked explanation and examples of how to interpret and apply each ISO 55001 requirement, since the requirements standard is deliberately concise and generic across sectors.",
+            components:["Clause-by-clause guidance mirroring ISO 55001's structure","Examples and explanatory notes","Not auditable itself — a reference, not a checklist"],
+            failures:["Treating ISO 55002 guidance as mandatory requirements (it isn't — ISO 55001 is what's certified against)","Ignoring it and reinventing interpretation from scratch"],
+            am:"Useful as your first stop when a requirement in ISO 55001 feels abstract — it's written to bridge the gap between the generic standard and a real operational context.",
+            condition:["Guidance","Interpretation"]
+          },
+          { code:"A2", name:"Risk-based decision making guidance",
+            what:"Provides guidance on integrating risk management into asset management decisions — how probability and consequence of failure should inform planning, consistent with ISO 31000 (the general risk management standard).",
+            components:["Risk assessment integrated into planning, not a separate exercise","Consistency with ISO 31000 risk management principles","Guidance on risk appetite and tolerance"],
+            failures:["Risk assessed for individual assets but never rolled up to portfolio or network level","Risk appetite never explicitly agreed with leadership, so priorities drift"],
+            am:"Directly underpins the PoF x CoF risk-scoring approach you'll use day to day — ISO 55002 is essentially the standards-based justification for exactly that kind of modelling.",
+            condition:["Risk appetite","PoF/CoF"]
+          },
+          { code:"A3", name:"Life cycle & criticality guidance",
+            what:"Guidance on considering the whole asset life cycle (create/acquire, utilise, maintain, renew/dispose) in decision-making, and on establishing asset criticality to focus attention and resource where it matters most.",
+            components:["Whole life cost thinking across create-utilise-maintain-renew/dispose","Asset criticality assessment methodology","Guidance on balancing capex and opex decisions over the life cycle"],
+            failures:["Optimising one life cycle stage (e.g. cheapest renewal) at the expense of whole-life cost","Criticality assessed once at commissioning and never revisited as context changes"],
+            am:"This is the standards backing for whole-life costing arguments — useful when pushing back on a purely lowest-capex renewal decision that ignores higher operating or failure-consequence costs downstream.",
+            condition:["Whole life cost","Criticality"]
+          }
+        ]
+      }
+    ]
+  },
+  isob: {
+    label: "Applying it at a water utility",
+    tag: "sector context",
+    stages: [
+      {
+        code: "WA-1", name: "Strategic layer",
+        assets: [
+          { code:"A1", name:"Strategic Asset Management Plan (SAMP)",
+            what:"The document that translates organisational objectives into the asset management approach — setting out what the organisation needs from its assets over the long term (often 25+ years for water infrastructure) and the framework for getting there. In UK water, this typically sits above and informs each 5-year AMP cycle.",
+            components:["Long-term (often 25-year) horizon, beyond a single AMP","Links corporate strategy to asset management objectives","Framework each AMP business plan should sit within"],
+            failures:["SAMP written to satisfy certification but disconnected from the actual AMP submission","Long-term thinking abandoned under short-term AMP funding pressure"],
+            am:"Worth understanding early where Wessex Water's long-term strategic thinking lives and how explicitly it's linked to the current AMP8 business plan — that linkage is exactly what 'line of sight' is meant to test.",
+            condition:["Long-term horizon","AMP alignment"]
+          },
+          { code:"A2", name:"Asset management policy",
+            what:"A short, top-management-endorsed statement of the organisation's commitment and approach to asset management, providing a framework for setting asset management objectives — the top of the line-of-sight chain.",
+            components:["Endorsed by executive leadership","States commitment and overall approach","Provides the framework asset management objectives sit under"],
+            failures:["Generic policy language that could apply to any organisation, not water-specific","Policy that's never referenced in real prioritisation debates"],
+            am:"A genuinely well-used policy shows up in how investment trade-off conversations are framed day to day — if nobody references it when priorities clash, it's not really doing its job.",
+            condition:["Endorsement","Use in practice"]
+          },
+          { code:"A3", name:"Objectives cascade (line of sight in practice)",
+            what:"The practical translation of corporate objectives (e.g. reduce pollution incidents, improve supply resilience, hit Ofwat performance commitments) down into asset management objectives, then into specific plans and interventions on individual assets.",
+            components:["Corporate objectives (often tied to Ofwat performance commitments)","Asset management objectives derived from them","Specific plans and interventions traceable back up the chain"],
+            failures:["Performance commitments tracked separately from asset investment planning, rather than driving it","Asset-level teams unaware of which corporate objective their work is meant to serve"],
+            am:"When you write an investment justification, explicitly naming which corporate objective or performance commitment it serves is usually exactly what makes a business case land well — it demonstrates line of sight rather than asserting it.",
+            condition:["Traceability","Performance commitments"]
+          }
+        ]
+      },
+      {
+        code: "WA-2", name: "Regulatory & sector context",
+        assets: [
+          { code:"A1", name:"PAS 55 to ISO 55000 lineage",
+            what:"ISO 55000 (2014) evolved from PAS 55, a British Standards Institution publicly available specification for asset management first published in 2004 — developed substantially with input from UK utilities and infrastructure operators, including the water sector. It's part of why ISO 55000 concepts feel native to UK utility asset management practice.",
+            components:["PAS 55 (2004) — UK-originated asset management specification","Developed with heavy input from utility and infrastructure sectors","Formalised internationally as ISO 55000/55001/55002 in 2014"],
+            failures:["Assuming ISO 55000 is a purely theoretical/generic import — its DNA is UK infrastructure practice","Not recognising how much existing UK water sector practice already aligns with it"],
+            am:"Genuinely useful context to have on day one: you're not learning an alien framework bolted onto the water sector, you're learning a formalised version of practice the sector itself helped write.",
+            condition:["History","UK origin"]
+          },
+          { code:"A2", name:"Ofwat board assurance & monitoring",
+            what:"Ofwat expects water company boards to provide assurance on the resilience of their asset base and the robustness of investment planning, often through Board Assurance processes referencing asset management maturity — with clear conceptual overlap with ISO 55001's leadership and assurance requirements, even where formal certification isn't mandated.",
+            components:["Board-level assurance statements on asset resilience","Company monitoring framework and reporting to Ofwat","Overlap with ISO 55001 leadership/assurance clauses, without mandatory certification"],
+            failures:["Treating regulatory assurance reporting as a separate exercise from the underlying asset management system","Assurance statements not genuinely backed by the evidence clause 9 (performance evaluation) requires"],
+            am:"Even where a water company isn't ISO 55001-certified, Ofwat's expectations echo the standard closely enough that internal asset management practice is usually built with at least loose alignment to it — worth checking Wessex Water's specific approach and maturity level early on.",
+            condition:["Board assurance","Regulatory reporting"]
+          },
+          { code:"A3", name:"AMP investment cycles vs continuous improvement",
+            what:"UK water company investment is planned and funded in five-year Asset Management Plan (AMP) cycles set by Ofwat's price review process — a fundamentally different rhythm from ISO 55001's expectation of continual improvement (clause 10). Reconciling a five-year funding cycle with an ongoing improvement philosophy is a recurring practical tension in the sector.",
+                components:["AMP cycle: five-year regulatory investment period (currently AMP8)","ISO 55001 clause 10: continual, not periodic, improvement","Tension between funding certainty and continuous adaptation"],
+            failures:["Asset strategy effectively frozen for five years between AMP submissions","Genuine emerging risks (e.g. new pollutant standards) waiting for the next AMP window rather than triggering in-period response"],
+            am:"A specialist who understands this tension well can add real value — building flexibility and evidence-gathering into the current AMP period so the next PR (price review) submission is stronger, rather than treating each AMP as a standing start.",
+            condition:["AMP cycle","Continuous improvement"]
+          }
+        ]
+      },
+      {
+        code: "WA-3", name: "Day-to-day specialist practice",
+        assets: [
+          { code:"A1", name:"Asset hierarchy & criticality",
+            what:"Structuring the asset base into a consistent hierarchy (e.g. system > works > process > asset > component) and scoring criticality at each level — the practical foundation that everything else (risk models, investment prioritisation, data management) is built on.",
+            components:["Consistent asset hierarchy/coding across the organisation","Criticality scoring methodology, consistently applied","Foundation for risk-based investment prioritisation"],
+            failures:["Different teams using inconsistent hierarchies, making network-wide comparison impossible","Criticality scored once and never revisited as the network or context changes"],
+            am:"Often the least glamorous but highest-leverage piece of work in a new asset management role — a clean, consistent hierarchy makes every model, report and investment case downstream easier and more credible.",
+            condition:["Hierarchy consistency","Criticality currency"]
+          },
+          { code:"A2", name:"Risk-based investment decision making",
+            what:"Using probability of failure (PoF) and consequence of failure (CoF) to score and prioritise interventions, consistent with ISO 55002's risk-based guidance — the practical engine translating asset condition data into an investment programme.",
+            components:["Probability of failure (PoF) modelling","Consequence of failure (CoF) scoring","Combined risk-based prioritisation, ideally with an optimisation step for budget constraints"],
+            failures:["Prioritising by condition alone, ignoring consequence (a poor-condition, low-consequence asset outranking a fair-condition, high-consequence one)","PoF models built on thin or poor-quality historical failure data"],
+            am:"This is the technical core of the specialist role — the modelling techniques from the earlier notebook (classification, survival analysis, network criticality) all feed directly into this decision-making layer.",
+            condition:["PoF","CoF","Prioritisation"]
+          },
+          { code:"A3", name:"Whole life cost / life cycle planning",
+            what:"Evaluating asset decisions across their full life cycle cost (acquisition, operation, maintenance, renewal, disposal) rather than just upfront capital cost — directly reflecting ISO 55002's life cycle guidance, and a common source of tension with short-term capex-focused decision making.",
+            components:["Total cost of ownership across acquire-operate-maintain-renew-dispose","Trade-off analysis between capex and opex over time","Long-term view balanced against AMP funding cycle realities"],
+            failures:["Selecting the lowest-capex option that carries much higher lifetime operating or failure costs","Whole-life cost analysis done once at business case stage and never revisited"],
+            am:"A classic real-world tension: AMP funding pressure often pushes toward lowest upfront cost, while ISO 55000 principles (and usually the actual long-term interest of the business) favour whole-life optimisation — being able to make that case with evidence is a core skill.",
+            condition:["Whole life cost","Capex vs opex"]
+          },
+          { code:"A4", name:"Data & information management",
+            what:"Ensuring asset data (condition surveys, failure history, GIS records, work order history) is accurate, consistent and accessible enough to support the decisions built on top of it — the practical expression of ISO 55001 clause 7's information requirements.",
+            components:["Data quality and completeness across the asset register","Consistent data structures across systems (GIS, EAM/CMMS, SCADA)","Governance over who owns and updates asset data"],
+            failures:["Asset register and GIS falling out of sync over time","Condition survey data captured but never fed back into risk models","No clear data ownership, so quality issues never get fixed at source"],
+            am:"In most water utilities this is where a large share of an asset management specialist's actual time goes — not because it's the most interesting part of the job, but because every risk model, business case and criticality score is only as credible as the data underneath it.",
+            condition:["Data quality","System consistency","Governance"]
+          }
+        ]
+      }
+    ]
+  }
+};
+
 const layout = document.getElementById('layout');
+const layoutIso = document.getElementById('layout-iso');
 const drawer = document.getElementById('drawer');
 const overlay = document.getElementById('overlay');
 const drawerContent = document.getElementById('drawer-content');
 
-function buildStream(key, data, cls){
+const SECTION_LABELS = {
+  assets: { comp:"Key components", fail:"Common failure modes", cond:"What's monitored", am:"Asset management note" },
+  iso:    { comp:"Key points", fail:"Common pitfalls", cond:"Key terms", am:"Why it matters at a water utility" }
+};
+const ACTIVE_CLASS = { clean:null, waste:'waste-active', isoa:'isoa-active', isob:'isob-active' };
+
+function buildStream(key, data, cls, page){
   const streamEl = document.createElement('div');
   streamEl.className = 'stream ' + cls;
   const head = document.createElement('div');
@@ -600,7 +874,7 @@ function buildStream(key, data, cls){
   data.stages.forEach((stage, si) => {
     const stageEl = document.createElement('div');
     stageEl.className = 'stage';
-    stageEl.id = `${key}-stage-${si}`;
+    stageEl.id = `${page}-${key}-stage-${si}`;
 
     const btn = document.createElement('button');
     btn.className = 'stage-btn';
@@ -613,11 +887,11 @@ function buildStream(key, data, cls){
     stage.assets.forEach((asset, ai) => {
       const chip = document.createElement('button');
       chip.className = 'asset-chip';
-      chip.id = `${key}-chip-${si}-${ai}`;
+      chip.id = `${page}-${key}-chip-${si}-${ai}`;
       chip.innerHTML = `<span class="achip-code">${stage.code}.${asset.code}</span><span>${asset.name}</span>`;
       chip.onclick = (e) => {
         e.stopPropagation();
-        openAsset(key, stage, asset, chip);
+        openAsset(page, key, data, stage, asset, chip, cls);
       };
       assetsEl.appendChild(chip);
     });
@@ -629,22 +903,29 @@ function buildStream(key, data, cls){
   return streamEl;
 }
 
-layout.appendChild(buildStream('clean', DATA.clean, 'clean'));
-layout.appendChild(buildStream('waste', DATA.waste, 'waste'));
+layout.appendChild(buildStream('clean', DATA.clean, 'clean', 'assets'));
+layout.appendChild(buildStream('waste', DATA.waste, 'waste', 'assets'));
+layoutIso.appendChild(buildStream('isoa', DATA_ISO.isoa, 'isoa', 'iso'));
+layoutIso.appendChild(buildStream('isob', DATA_ISO.isob, 'isob', 'iso'));
 
 function toggleStage(stageEl){
   const wasOpen = stageEl.classList.contains('open');
-  document.querySelectorAll('.stage.open').forEach(s => { if(s !== stageEl) s.classList.remove('open'); });
+  const parent = stageEl.closest('.layout');
+  parent.querySelectorAll('.stage.open').forEach(s => { if(s !== stageEl) s.classList.remove('open'); });
   stageEl.classList.toggle('open', !wasOpen);
 }
 
 let activeChip = null;
-function openAsset(streamKey, stage, asset, chipEl){
+function openAsset(page, streamKey, streamData, stage, asset, chipEl, cls){
   if(activeChip) activeChip.classList.remove('active');
   activeChip = chipEl;
   chipEl.classList.add('active');
-  document.body.classList.toggle('waste-active', streamKey === 'waste');
 
+  ['waste-active','isoa-active','isob-active'].forEach(c => document.body.classList.remove(c));
+  const activeClass = ACTIVE_CLASS[cls];
+  if(activeClass) document.body.classList.add(activeClass);
+
+  const labels = SECTION_LABELS[page];
   const condPills = asset.condition.map(c => `<span class="pill">${c}</span>`).join('');
   const compList = asset.components.map(c => `<li>${c}</li>`).join('');
   const failList = asset.failures.map(f => `<li>${f}</li>`).join('');
@@ -652,7 +933,7 @@ function openAsset(streamKey, stage, asset, chipEl){
   drawerContent.innerHTML = `
     <div class="d-code">${stage.code}.${asset.code}</div>
     <div class="d-title">${asset.name}</div>
-    <div class="d-stage">Stage: <b>${stage.name}</b> &middot; ${streamKey === 'clean' ? 'Clean water' : 'Wastewater'}</div>
+    <div class="d-stage">${page === 'assets' ? 'Stage' : 'Section'}: <b>${stage.name}</b> &middot; ${streamData.label}</div>
 
     <div class="d-section">
       <h4>What it is</h4>
@@ -660,22 +941,22 @@ function openAsset(streamKey, stage, asset, chipEl){
     </div>
 
     <div class="d-section">
-      <h4>Key components</h4>
+      <h4>${labels.comp}</h4>
       <ul>${compList}</ul>
     </div>
 
     <div class="d-section">
-      <h4>Common failure modes</h4>
+      <h4>${labels.fail}</h4>
       <ul>${failList}</ul>
     </div>
 
     <div class="d-section">
-      <h4>What's monitored</h4>
+      <h4>${labels.cond}</h4>
       <div class="cond-pills">${condPills}</div>
     </div>
 
     <div class="d-section">
-      <h4>Asset management note</h4>
+      <h4>${labels.am}</h4>
       <div class="am-box"><p>${asset.am}</p></div>
     </div>
   `;
@@ -688,6 +969,23 @@ function closeDrawer(){
   drawer.classList.remove('show');
   overlay.classList.remove('show');
   if(activeChip){ activeChip.classList.remove('active'); activeChip = null; }
+}
+
+function showPage(page){
+  const isAssets = page === 'assets';
+  document.getElementById('page-assets-wrap').classList.toggle('active', isAssets);
+  document.getElementById('page-iso-wrap').classList.toggle('active', !isAssets);
+  document.getElementById('nav-assets').classList.toggle('active', isAssets);
+  document.getElementById('nav-iso').classList.toggle('active', !isAssets);
+  document.getElementById('legend-assets').style.display = isAssets ? 'flex' : 'none';
+  document.getElementById('legend-iso').style.display = isAssets ? 'none' : 'flex';
+  document.getElementById('page-title').innerHTML = isAssets
+    ? 'Clean water &amp; wastewater asset explorer'
+    : 'ISO 55000 in a water industry context';
+  document.getElementById('page-desc').textContent = isAssets
+    ? "Click a stage to open it up, then click an asset to see what it does, its key components, common failure modes, and what an asset management specialist watches for."
+    : "Click a section to open it up, then click a topic to see what it means and how it actually shows up in an AMP investment cycle at a water utility.";
+  closeDrawer();
 }
 
 document.addEventListener('keydown', (e) => { if(e.key === 'Escape') closeDrawer(); });
